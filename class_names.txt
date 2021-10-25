@@ -1,0 +1,14 @@
+D0X, non-gesture
+B0A, pointing one finger
+B0B, pointing two fingers
+G01, click one finger
+G02, click two fingers
+G03, throw up
+G04, throw down
+G05, throw left
+G06, throw right
+G07, open twice
+G08, double click one finger
+G09, double click two fingers
+G10, zoom in
+G11, zoom out

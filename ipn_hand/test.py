@@ -5,12 +5,14 @@ import os
 
 import pandas as pd
 
+
 def f(x):
     return f"banana: {x[0]} is sad {x[1]}"
 
+
 # def to_path()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     p = Path.cwd() / "data" / "IPN_Hand" / "videos"
 
