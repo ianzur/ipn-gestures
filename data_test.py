@@ -4,13 +4,12 @@ import logging
 
 import numpy as np
 import pandas as pd
-from tensorflow_datasets.core.features import video_feature
 import imageio
 
 import tensorflow as tf
-from tensorflow.python.ops.image_ops_impl import adjust_brightness
 import tensorflow_datasets as tfds
 
+# required import to register dataset definition (can be removed if officially added to tfds package)
 import ipn_hand.ipn_hand
 
 # print(tf.config.list_physical_devices())
@@ -132,6 +131,12 @@ def random_manipulation(example):
         video,
         parallel_iterations=10
     )
+
+    # TODO: salty boy
+    # salt = 
+
+    # TODO: some peppa won't hurt
+    # pepper = 
 
     example["video"] = video
     

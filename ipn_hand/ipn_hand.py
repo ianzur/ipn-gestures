@@ -1,82 +1,114 @@
 """ipn_hand dataset."""
 
-from collections import namedtuple
-import multiprocessing
 from pathlib import Path
-from typing import List, Tuple
-import logging
-import re
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
-# TODO(ipn_hand): Markdown description  that will appear on the catalog page.
-_DESCRIPTION = """
-
-
-https://gibranbenitez.github.io/IPN_Hand/
-"""
-
-# TODO(ipn_hand): BibTeX citation
-_CITATION = """
-"""
-
 import pandas as pd
-import numpy as np
-
-logger = multiprocessing.get_logger()
-logger.setLevel(logging.INFO)
+# import numpy as np
 
 
-def split_video(x):
-    """return segments from video as list of tuples (key, np.array)"""
-    # path: Path, slices: List[Tuple(int, int)]
+_DESCRIPTION = """
+The IPN Hand dataset contains more than 4,000 gesture instances and 800,000 frames from 50 subjects.
+We design 13 static and dynamic gestures for interaction with touchless screens. 
+Compared to other publicly available hand gesture datasets, IPN Hand includes the largest number of 
+continuous gestures per video, and the largest speed of intra-class variation.
 
-    print(x)
+The data collection was designed considering real-world issues of continuous HGR, 
+including continuous gestures performed without transitional states, natural movements as non-gesture segments, 
+scenes including clutter backgrounds, extreme illumination conditions, as well as static and dynamic environments.
+"""
+
+_CITATION = """
+@inproceedings{bega2020IPNhand,
+  title={IPN Hand: A Video Dataset and Benchmark for Real-Time Continuous Hand Gesture Recognition},
+  author={Benitez-Garcia, Gibran and Olivares-Mercado, Jesus and Sanchez-Perez, Gabriel and Yanai, Keiji},
+  booktitle={25th International Conference on Pattern Recognition, {ICPR 2020}, Milan, Italy, Jan 10--15, 2021},
+  pages={4340--4347},
+  year={2021},
+  organization={IEEE}
+}
+"""
+
+_MANUAL_DOWNLOAD_INSTRUCTIONS = """
+https://gibranbenitez.github.io/IPN_Hand/ click download link. 
+
+Download and extract `frames/frames0X.tgz` to folder:
+`ipn-gestures/data/IPN_Hand/frames/<vid_name>/<vid_name>_00XXXX.jpg`
+
+And and `annotations/*` to folder:
+`ipn-gestures/data/IPN_Hand/annotations/*`
+
+e.g.
+```
+data/IPN_Hand/
+├── annotations
+│   ├── Annot_List.txt
+│   ├── classIdx.txt
+│   ├── metadata.csv
+│   ├── ...
+├── frames
+│   ├── 1CM1_1_R_#217
+│   │   ├── *000001.jpg
+│   │   ├── *000002.jpg
+│   │   ├── *000003.jpg
+│   │   ├── ...
+│   ├── 1CM1_1_R_#218
+│   ├── 1CM1_1_R_#219
+│   ├── ...
+```
+"""
+
+# TODO: resolve IPN-hand issue #11 before attempting to use video data to create tfrecords
+# def split_video(x):
+#     """return segments from video as list of tuples (key, np.array)"""
+#     # path: Path, slices: List[Tuple(int, int)]
+
+#     print(x)
     
 
-    # all paths should be the same
-    assert x["path"].nunique() == 1
-    # print(x)
+#     # all paths should be the same
+#     assert x["path"].nunique() == 1
+#     # print(x)
 
-    path = x.iloc[0]["path"]
+#     path = x.iloc[0]["path"]
 
-    cv2 = tfds.core.lazy_imports.cv2
-    # # np = tfds.core.lazy_imports.numpy
+#     cv2 = tfds.core.lazy_imports.cv2
+#     # # np = tfds.core.lazy_imports.numpy
 
-    capture = cv2.VideoCapture(str(path))
-    video_segments = []
+#     capture = cv2.VideoCapture(str(path))
+#     video_segments = []
 
-    # TODO: check that all frames are labeled
-    # x = x.sort_values(by="t_start")
+#     # TODO: check that all frames are labeled
+#     # x = x.sort_values(by="t_start")
 
-    # assert all()
-    match = re.search(pattern, x.iloc[0]["video"])
-    vid_num = match.group("video_number")
-    handedness = match.group("handedness")
-    subject = match.group("subject")
+#     # assert all()
+#     match = re.search(pattern, x.iloc[0]["video"])
+#     vid_num = match.group("video_number")
+#     handedness = match.group("handedness")
+#     subject = match.group("subject")
 
-    # i = 97
-    # for _, slice in x.iterrows():
-    #     start = slice["t_start"]
-    #     end = slice["t_end"]
+#     # i = 97
+#     # for _, slice in x.iterrows():
+#     #     start = slice["t_start"]
+#     #     end = slice["t_end"]
 
-    #     frames = []
-    #     for i in range(start, end + 1):
-    #         ret, frame = capture.read()
+#     #     frames = []
+#     #     for i in range(start, end + 1):
+#     #         ret, frame = capture.read()
 
-    #         if not ret:
-    #             print(f"Early exit: annotation suggests more frames exist in the video: {x.iloc[0]['video']} final_frame={i} vs. annotation={end}")
-    #             break
+#     #         if not ret:
+#     #             print(f"Early exit: annotation suggests more frames exist in the video: {x.iloc[0]['video']} final_frame={i} vs. annotation={end}")
+#     #             break
 
-    #         frames.append(frame)      
+#     #         frames.append(frame)      
 
-    #     video = np.stack(frames)
+#     #     video = np.stack(frames)
 
-    #     video_segments.append((video, vid_num + chr(i), slice["label"], slice["video"], start, end, slice["frames"], handedness, subject))
-    #     i += 1
+#     #     video_segments.append((video, vid_num + chr(i), slice["label"], slice["video"], start, end, slice["frames"], handedness, subject))
+#     #     i += 1
 
-    return video_segments
+#     return video_segments
 
 
 def read_annots_and_metas(path: Path):
@@ -178,10 +210,14 @@ class IpnHand(tfds.core.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager: tfds.download.DownloadManager=None):
         """Returns SplitGenerators."""
 
-        # manual_download = Path.cwd() / "IPN_Hand"
+        path = Path.cwd() / "data" / "IPN_Hand"
+
+        if not path.exists():
+            print(_MANUAL_DOWNLOAD_INSTRUCTIONS)
+            exit()
 
         return {
-            "train": self._generate_examples(Path.cwd() / "data" / "IPN_Hand"),
+            "train": self._generate_examples(path),
         }
 
     def _generate_examples(self, path):
@@ -189,17 +225,11 @@ class IpnHand(tfds.core.GeneratorBasedBuilder):
 
         # read annotations file
         df = read_annots_and_metas(path / "annotations" )
-        # print(df.head())
-        # df = df.drop(columns="id")
-        # print(df.columns.tolist())
 
         frame_path = path / "frames"
                
         def _process_example(row):
-            # print(f"{'*'*30} {row} {'*'*30}")
             frame_path = Path.cwd() / "data" / "IPN_Hand" / "frames"
-
-            # video_list = list(frame_path / row[0] / row[0] + "_" + str(i).zfill(6) + ".jpg" for i in range(row[3], row[4]+1))
 
             video_list = []
             for i in range(row[3], row[4]+1):

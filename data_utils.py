@@ -3,10 +3,11 @@ import re
 
 import numpy as np
 import pandas as pd
-from pandas.core import groupby
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
+import imageio
 
 
 def split_video(x):
@@ -59,62 +60,49 @@ def split_video(x):
     return video_segments
 
 
-def read_annot_and_meta(path: Path):
+def descriptive_stats(df):
 
-    if not path.exists():
-        raise RuntimeError(f"`{path}` is missing")
+    dfs = []
 
-    df_meta = pd.read_table(path / "metadata.csv", delimiter=",", header=0, index_col=None)
-    df_meta.columns = df_meta.columns.str.lower()
-    df_meta.columns = df_meta.columns.str.replace(" ", "_")
+    for col in [
+        "label",
+        "sex",
+        "hand",
+        "background",
+        "illumination",
+        "people_in_scene",
+        "background_motion",
+    ]:
 
-    for col in ["sex", "hand", "background", "illumination", "people_in_scene", "background_motion"]:
-        df_meta[col] = df_meta[col].str.lower()
-        df_meta[col] = df_meta[col].str.strip(" ")
+        counts = df[col].value_counts(sort=False)
+        counts.name = "n"
 
+        as_per = counts / counts.sum()
+        as_per.name = "%"
 
-    df_meta = df_meta.rename(columns={"frames": "total_frames"})
+        _df = pd.concat([counts, as_per], axis=1)
+        _df.index.name = col
+        dfs.append(_df)
 
-    df_annot = pd.read_table(path / "Annot_List.txt", delimiter=",", header=0, index_col=None)
-
-    df = pd.merge(df_annot, df_meta, left_on="video", right_on="video_name")
-    df = df.drop(columns=["video_name"])
-
-    df["participant"] = df["video"].map(lambda x: "_".join(x.split("_")[:2]))
-
-    # give each sequence (in the same video file) a unique ID
-    df["unique_id"] = df.groupby("video", sort="t_start").cumcount()
-
-    return df
+    return pd.concat(dfs, keys=[x.index.name for x in dfs])
 
 
-def read_labels(path: Path):
+def original_split_describe(df):
+    """some descriptive stats of the original data split (found in metadata.csv)"""
 
-    if not path.exists():
-        raise RuntimeError(f"`{path}` is missing")
+    train = df[df["orig_set"] == "train"]
+    test = df[df["orig_set"] == "test"]
 
-    df = pd.read_table(path, delimiter=",", header=0, index_col=None)
+    train_desc = descriptive_stats(train)
+    test_desc = descriptive_stats(test)
 
-    return df
+    format_df = pd.concat([train_desc, test_desc], axis=1, keys=["train", "test"])
+    format_df = format_df.replace(np.NaN, 0)
 
-if __name__ == "__main__":
-    df = read_annotations(Path("data/IPN_Hand/annotations"))
-    print(df)
+    # format_df.style.format("{:.2%}", subset=(format_df.columns.get_level_values(1) == "%"), na_rep=0)
 
-    for col in ["sex", "hand", "background", "illumination", "people_in_scene", "background_motion"]:
-        print(f"{col}: {df[col].unique()}")
+    print(format_df.to_markdown(tablefmt="fancy_grid"))
 
 
-    # # split = [df.loc[value] for _, value in df.groupby(by="video").groups.items()]
-
-    # for key, info in df.groupby(by="video"):
-    #     split_video(info)
-
-    # p = Path("/home/ian/Documents/projects/ipn-gestures/data/IPN_Hand/frames/1CM1_3_R_#226")
-
-    # l = [int(p.name.split('.')[0].split("_")[-1]) for p in p.iterdir()]
-
-    # s = pd.Series(l, dtype=int).sort_values().reset_index(drop=True)
-    # print(s)
-    # step = s[]
-    
+def create_gif(path, img_sequence):
+    imageio.mimsave(path, (img_sequence.numpy() * 255).astype(np.uint8), fps=30)
