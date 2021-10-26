@@ -264,8 +264,8 @@ def original_split_describe(df):
 
     print(format_df.to_markdown(tablefmt="fancy_grid"))
 
-def create_gif(path, img_sequence):
 
+def create_gif(path, img_sequence):
     imageio.mimsave(path, (img_sequence.numpy() * 255).astype(np.uint8), fps=30)
 
 
@@ -299,6 +299,10 @@ if __name__ == "__main__":
         with_info=True,
         as_supervised=False,  # set True to only return (video, label) tuple
     )
+
+    # ds_train = 
+    # ds_validation = 
+    # ds_test = 
 
     with tf.device("CPU"):
         ds = ds.map(functools.partial(decode_video, window_size=60, loop=True, start="random")).batch(10)
