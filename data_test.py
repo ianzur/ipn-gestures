@@ -12,71 +12,13 @@ import tensorflow_datasets as tfds
 # required import to register dataset definition (can be removed if officially added to tfds package)
 import ipn_hand.ipn_hand
 
+# utility functions that were crowding this script
+import data_utils
+
 # print(tf.config.list_physical_devices())
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
-
-features={
-    "video": False,
-    "label": True,
-    "start": True,
-    "end": True,
-    "frames": True,
-    "tot_frames": True,
-    "participant": True,
-    "sex": True,
-    "hand": True,
-    "background": True,
-    "illumination": True,
-    "people_in_scene": True,
-    "background_motion": True,
-    "orig_set": True,
-    "filename": True
-}
-
-def read_labelmap(path=None):
-
-    if path is None:
-        path = Path("./ipn_hand/class_labelmap.csv")
-
-    return pd.read_table(
-        path, sep=",", index_col=[0], header=None, squeeze=True
-    ).to_dict()
-
-
-def tfds2df(ds, ds_info):
-    """return dataset as dataframe (see: warning)
-
-    Warning:
-        - ** do NOT use `tfds.as_dataframe(...)` without ignoring video feature **
-            > this will attempt to load all video sequences into your RAM
-        - or you can "take" a subset of the ds object `ds.take(2)`
-    """
-
-    df = tfds.as_dataframe(ds, ds_info=ds_info)
-    print(df.columns)
-
-    # decode features
-    for feature in [
-        "label",
-        "sex",
-        "hand",
-        "background",
-        "illumination",
-        "people_in_scene",
-        "background_motion",
-        "orig_set",
-    ]:
-        df[feature] = df[feature].map(ds_info.features[feature].int2str)
-
-    # map label to human readable
-    df["label"] = df["label"].map(read_labelmap())
-
-    # decode participant names
-    df["participant"] = df["participant"].str.decode("utf-8")
-
-    return df
 
 
 def decode_frame(serialized_image):
@@ -216,7 +158,6 @@ def decode_video(example, window_size, loop, start):
             parallel_iterations=10,
         )
 
-
     # convert to float tensor [0, 1] 
     video = tf.cast(video, tf.dtypes.float32) / 255.
 
@@ -226,75 +167,29 @@ def decode_video(example, window_size, loop, start):
     return example
 
 
-def descriptive_stats(df):
-
-    dfs = []
-
-    for col in [
-        "label",
-        "sex",
-        "hand",
-        "background",
-        "illumination",
-        "people_in_scene",
-        "background_motion",
-    ]:
-
-        counts = df[col].value_counts(sort=False)
-        counts.name = "n"
-
-        as_per = counts / counts.sum()
-        as_per.name = "%"
-
-        _df = pd.concat([counts, as_per], axis=1)
-        _df.index.name = col
-        dfs.append(_df)
-
-    return pd.concat(dfs, keys=[x.index.name for x in dfs])
-
-
-def original_split_describe(df):
-    """some descriptive stats of the original data split (found in metadata.csv)"""
-
-    train = df[df["orig_set"] == "train"]
-    test = df[df["orig_set"] == "test"]
-
-    train_desc = descriptive_stats(train)
-    test_desc = descriptive_stats(test)
-
-    format_df = pd.concat([train_desc, test_desc], axis=1, keys=["train", "test"])
-    format_df = format_df.replace(np.NaN, 0)
-
-    # format_df.style.format("{:.2%}", subset=(format_df.columns.get_level_values(1) == "%"), na_rep=0)
-
-    print(format_df.to_markdown(tablefmt="fancy_grid"))
-
-
-def create_gif(path, img_sequence):
-    imageio.mimsave(path, (img_sequence.numpy() * 255).astype(np.uint8), fps=30)
-
-
 if __name__ == "__main__":
 
+    ### read metadata only transform into pandas.Dataframe for EDA ###
     # # Don't load video feature when creating df
     # ds, ds_info = tfds.load(
     #     "ipn_hand",
     #     data_dir="./data",
     #     split="train",  # currently there are no pre-defined train/val/test splits
-    #     decoders=tfds.decode.PartialDecoding(features),  # do NOT read video data
+    #     decoders=tfds.decode.PartialDecoding(data_utils.META_FEATURES),  # do NOT read video data
     #     with_info=True,
     #     as_supervised=False,  # set True to only return (video, label) tuple
     # )
 
     # df = tfds2df(ds, ds_info)
-    # original_split_describe(df)
+    # data_utils.original_split_describe(df)
 
     # print(df[df["frames"] <= 18]["label"].value_counts().to_markdown(tablefmt="grid"))
+    ### END EDA ###    
 
-    # print(train_participants & test_participants)
+    # dataset label map is not human readable
+    label_map = data_utils.read_labelmap()
 
-    label_map = read_labelmap()
-
+    ### load Dataset for training ###
     # Don't load video feature when creating df
     ds, ds_info = tfds.load(
         "ipn_hand",
@@ -315,7 +210,7 @@ if __name__ == "__main__":
     i = 0
     ## Check the contents
     for item in ds:
-        create_gif("./test.gif", item["video"][i])
+        data_utils.create_gif("./test.gif", item["video"][i])
         print(label_map[ds_info.features["label"].int2str(item["label"][i])])
         print(item["start"][i], item["end"][i])
         print(item["filename"][i])

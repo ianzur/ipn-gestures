@@ -3,7 +3,7 @@ set up dataset for tensorflow training
 
 Files:
 - `data_test.py`: example usage
-- `data_utils.py`: old stuff, not used
+- `data_utils.py`: some utility functions `@ianzur` used to check if things work
 
 Notes:
 - requires manual download of [IPN-Hand data](https://gibranbenitez.github.io/IPN_Hand/) 

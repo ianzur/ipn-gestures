@@ -121,7 +121,7 @@ def read_annots_and_metas(path: Path):
     """
 
     if not path.exists():
-        raise RuntimeError(f"`{path}` not found")
+        raise RuntimeError(_MANUAL_DOWNLOAD_INSTRUCTIONS)
 
     # read metadata
     df_meta = pd.read_table(path / "metadata.csv", delimiter=",", header=0, index_col=None)
@@ -153,7 +153,7 @@ def read_annots_and_metas(path: Path):
 def read_labels(path: Path):
 
     if not path.exists():
-        raise RuntimeError(f"`{path}` is missing")
+        raise RuntimeError(_MANUAL_DOWNLOAD_INSTRUCTIONS)
 
     df = pd.read_table(path, delimiter=",", header=0, index_col=None)
 
@@ -170,7 +170,7 @@ class IpnHand(tfds.core.GeneratorBasedBuilder):
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
-        # TODO(ipn_hand): Specifies the tfds.core.DatasetInfo object
+
         return tfds.core.DatasetInfo(
             builder=self,
             description=_DESCRIPTION,
@@ -199,10 +199,7 @@ class IpnHand(tfds.core.GeneratorBasedBuilder):
                     "filename": tf.dtypes.string
                 }
             ),
-            # If there's a common (input, target) tuple from the
-            # features, specify them here. They'll be used if
-            # `as_supervised=True` in `builder.as_dataset`.
-            supervised_keys=("video", "label"),  # Set to `None` to disable
+            supervised_keys=("video", "label"),
             homepage="https://gibranbenitez.github.io/IPN_Hand/",
             citation=_CITATION,
         )
@@ -213,8 +210,7 @@ class IpnHand(tfds.core.GeneratorBasedBuilder):
         path = Path.cwd() / "data" / "IPN_Hand"
 
         if not path.exists():
-            print(_MANUAL_DOWNLOAD_INSTRUCTIONS)
-            exit()
+            raise RuntimeError(_MANUAL_DOWNLOAD_INSTRUCTIONS)
 
         return {
             "train": self._generate_examples(path),
@@ -229,7 +225,6 @@ class IpnHand(tfds.core.GeneratorBasedBuilder):
         frame_path = path / "frames"
                
         def _process_example(row):
-            frame_path = Path.cwd() / "data" / "IPN_Hand" / "frames"
 
             video_list = []
             for i in range(row[3], row[4]+1):

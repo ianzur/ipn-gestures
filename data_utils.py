@@ -10,55 +10,25 @@ import tensorflow_datasets as tfds
 import imageio
 
 
-def split_video(x):
-    """return segments from video as list of tuples (key, np.array, label, id, handedness, subject, )"""
-    # path: Path, slices: List[Tuple(int, int)]
-
-    pattern = re.compile(r"(?P<id>\w+)_(?P<subject>\d+)_(?P<handedness>[R|L]{1})_#(?P<video_number>\d+)")
-
-    # all paths should be the same
-    assert x["path"].nunique() == 1
-    # print(x)
-
-    path = x.iloc[0]["path"]
-
-    cv2 = tfds.core.lazy_imports.cv2
-    # # np = tfds.core.lazy_imports.numpy
-
-    capture = cv2.VideoCapture(str(path))
-    video_segments = []
-
-    # TODO: check that all frames are labeled
-    x = x.sort_values(by="t_start")
-
-    # assert all()
-    match = re.search(pattern, x.iloc[0]["video"])
-    vid_num = match.group("video_number")
-    handedness = match.group("handedness")
-    subject = match.group("subject")
-
-    for _, slice in x.iterrows():
-        start = slice["t_start"]
-        end = slice["t_end"]
-
-        frames = []
-        for i in range(start, end + 1):
-            ret, frame = capture.read()
-
-            if not ret:
-                continue
-                # print(f"Early exit: annotation suggests more frames exist in the video: {x.iloc[0]['video']} final_frame={i} vs. annotation={end}")
-                # break
-
-            frames.append(frame)      
-
-        video = np.stack(frames)
-
-        video_segments.append((video, vid_num, slice["label"], slice["video"], start, end, slice["frames"], handedness, subject))
-        i += 1
-
-    return video_segments
-
+# features of dataset (use with tfds.load(...,  decoders=tfds.decode.PartialDecoding(features), ... ))
+# to ignore video sequence and load metadata
+META_FEATURES={
+    "video": False,
+    "label": True,
+    "start": True,
+    "end": True,
+    "frames": True,
+    "tot_frames": True,
+    "participant": True,
+    "sex": True,
+    "hand": True,
+    "background": True,
+    "illumination": True,
+    "people_in_scene": True,
+    "background_motion": True,
+    "orig_set": True,
+    "filename": True
+}
 
 def descriptive_stats(df):
 
@@ -105,4 +75,50 @@ def original_split_describe(df):
 
 
 def create_gif(path, img_sequence):
+    """save image sequence as gif"""
     imageio.mimsave(path, (img_sequence.numpy() * 255).astype(np.uint8), fps=30)
+
+
+def read_labelmap(path=None):
+    """returns as dictionary {'D0X': 'no-gesture', ...}"""
+
+    if path is None:
+        path = Path("./ipn_hand/class_labelmap.csv")
+
+    return pd.read_table(
+        path, sep=",", index_col=[0], header=None, squeeze=True
+    ).to_dict()
+
+
+def tfds2df(ds, ds_info):
+    """return dataset as dataframe (see: warning)
+
+    Warning:
+        - ** do NOT use `tfds.as_dataframe(...)` without ignoring video feature **
+            > this will attempt to load all video sequences into your RAM
+        - or you can "take" a subset of the ds object `ds.take(2)`
+    """
+
+    df = tfds.as_dataframe(ds, ds_info=ds_info)
+    print(df.columns)
+
+    # decode features
+    for feature in [
+        "label",
+        "sex",
+        "hand",
+        "background",
+        "illumination",
+        "people_in_scene",
+        "background_motion",
+        "orig_set",
+    ]:
+        df[feature] = df[feature].map(ds_info.features[feature].int2str)
+
+    # map label to human readable
+    df["label"] = df["label"].map(read_labelmap())
+
+    # decode participant names
+    df["participant"] = df["participant"].str.decode("utf-8")
+
+    return df
