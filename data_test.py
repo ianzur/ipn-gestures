@@ -169,7 +169,7 @@ def decode_video(example, window_size, loop, start):
 
 if __name__ == "__main__":
 
-    ### read metadata only transform into pandas.Dataframe for EDA ###
+    # ## read metadata only transform into pandas.Dataframe for EDA ###
     # # Don't load video feature when creating df
     # ds, ds_info = tfds.load(
     #     "ipn_hand",
@@ -180,7 +180,11 @@ if __name__ == "__main__":
     #     as_supervised=False,  # set True to only return (video, label) tuple
     # )
 
-    # df = tfds2df(ds, ds_info)
+    # df = data_utils.tfds2df(ds, ds_info)
+
+    # print(df[df["orig_set"] == "train"]["participant"].unique().tolist())
+    # print(df[df["orig_set"] == "test"]["participant"].unique().tolist())
+
     # data_utils.original_split_describe(df)
 
     # print(df[df["frames"] <= 18]["label"].value_counts().to_markdown(tablefmt="grid"))
@@ -200,12 +204,13 @@ if __name__ == "__main__":
         as_supervised=False,  # set True to only return (video, label) tuple
     )
 
+    with tf.device("CPU"):
+        ds = ds.map(functools.partial(decode_video, window_size=60, loop=True, start="random")).batch(10)
+
+    
     # ds_train = 
     # ds_validation = 
     # ds_test = 
-
-    with tf.device("CPU"):
-        ds = ds.map(functools.partial(decode_video, window_size=60, loop=True, start="random")).batch(10)
 
     i = 0
     ## Check the contents
